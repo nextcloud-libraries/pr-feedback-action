@@ -48,8 +48,8 @@ export class Issue implements IIssue {
       'isBot' in issue
         ? issue.isBot
         : typeof issue.user === 'object'
-        ? issue.user?.type === 'Bot'
-        : false;
+          ? issue.user?.type === 'Bot'
+          : false;
   }
 
   get isPullRequest(): boolean {
