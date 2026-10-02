@@ -4,6 +4,7 @@ export interface IIssuesProcessorOptions {
   repoToken: string;
   feedbackMessage: string;
   daysBeforeFeedback: number;
+  maxDaysOverdue: number;
   feedbackLabel: string;
   operationsPerRun: number;
   debugOnly: boolean;
