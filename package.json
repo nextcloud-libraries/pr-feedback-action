@@ -1,6 +1,6 @@
 {
   "name": "pr-feedback-action",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "private": true,
   "description": "Asks for feedback on PRs",
   "main": "lib/main.js",
@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/stale.git"
+    "url": "git+https://github.com/nextcloud-libraries/pr-feedback-action.git"
   },
   "keywords": [
     "actions",
@@ -34,7 +34,7 @@
     "node": ">=24",
     "npm": ">=11"
   },
-  "author": "GitHub",
+  "author": "Nextcloud GmbH",
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.11.1",
