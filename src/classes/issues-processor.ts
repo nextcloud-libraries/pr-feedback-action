@@ -118,6 +118,20 @@ export class IssuesProcessor {
         break;
       }
 
+      // Issues are fetched newest first, so all following ones are too old as well
+      if (this._isCreatedBeforeCutoff(issue)) {
+        this._logger.info(
+          LoggerService.green(
+            `Reached #${issue.number} which was created before the cutoff. Exiting...`
+          )
+        );
+        this.statistics
+          ?.setOperationsCount(this.operations.getConsumedOperationsCount())
+          .logStats();
+
+        return this.operations.getRemainingOperationsCount();
+      }
+
       const issueLogger: IssueLogger = new IssueLogger(issue);
       await issueLogger.grouping(`$$type #${issue.number}`, async () => {
         await this.processIssue(issue);
@@ -218,24 +232,6 @@ export class IssuesProcessor {
         IssuesProcessor._endIssueProcessing(issue);
         return; // Don't process issues which were created before the start date
       }
-    }
-
-    // Only ask within a window after feedback is due, so PRs that become eligible
-    // later (e.g. author removed from exempt-authors) don't get pinged years later
-    if (
-      this.options.maxDaysOverdue >= 0 &&
-      !IssuesProcessor._updatedSince(
-        issue.created_at,
-        daysBeforeFeedback + this.options.maxDaysOverdue
-      )
-    ) {
-      issueLogger.info(
-        `Skipping this $$type because it is more than ${LoggerService.cyan(
-          this.options.maxDaysOverdue
-        )} days past ${issueLogger.createOptionLink(Option.DaysBeforeFeedback)}`
-      );
-      IssuesProcessor._endIssueProcessing(issue);
-      return;
     }
 
     if (issue.askedForFeedback) {
@@ -366,6 +362,7 @@ export class IssuesProcessor {
         owner: context.repo.owner,
         repo: context.repo.repo,
         per_page: 1000,
+        sort: 'created',
         direction: 'desc',
         state: 'all',
         page
@@ -485,6 +482,29 @@ export class IssuesProcessor {
     } catch (error) {
       issueLogger.error(`Error when adding a label: ${error.message}`);
     }
+  }
+
+  // Only ask within a window after feedback is due, so PRs that become eligible
+  // later (e.g. author removed from exempt-authors) don't get pinged years later
+  private _isCreatedBeforeCutoff(issue: Readonly<Issue>): boolean {
+    if (
+      this.options.startDate &&
+      !isDateMoreRecentThan(
+        new Date(issue.created_at),
+        new Date(this.options.startDate)
+      )
+    ) {
+      return true;
+    }
+
+    return (
+      this.options.daysBeforeFeedback >= 0 &&
+      this.options.maxDaysOverdue >= 0 &&
+      !IssuesProcessor._updatedSince(
+        issue.created_at,
+        this.options.daysBeforeFeedback + this.options.maxDaysOverdue
+      )
+    );
   }
 
   private _getDaysBeforeFeedback(): number {
