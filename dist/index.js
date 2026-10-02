@@ -29071,6 +29071,18 @@ var IssuesProcessor = class _IssuesProcessor {
         return;
       }
     }
+    if (this.options.maxDaysOverdue >= 0 && !_IssuesProcessor._updatedSince(
+      issue.created_at,
+      daysBeforeFeedback + this.options.maxDaysOverdue
+    )) {
+      issueLogger.info(
+        `Skipping this $$type because it is more than ${LoggerService.cyan(
+          this.options.maxDaysOverdue
+        )} days past ${issueLogger.createOptionLink("days-before-feedback" /* DaysBeforeFeedback */)}`
+      );
+      _IssuesProcessor._endIssueProcessing(issue);
+      return;
+    }
     if (issue.askedForFeedback) {
       issueLogger.info(`This $$type includes a feedback label`);
     } else {
@@ -29289,6 +29301,9 @@ function _getAndValidateArgs() {
     daysBeforeFeedback: parseFloat(
       core3.getInput("days-before-feedback", { required: true })
     ),
+    maxDaysOverdue: parseFloat(
+      core3.getInput("max-days-overdue", { required: true })
+    ),
     feedbackLabel: core3.getInput("feedback-label", { required: true }),
     operationsPerRun: parseInt(
       core3.getInput("operations-per-run", { required: true })
@@ -29301,7 +29316,7 @@ function _getAndValidateArgs() {
     exemptAuthors: core3.getInput("exempt-authors"),
     exemptBots: core3.getInput("exempt-bots") === "true"
   };
-  for (const numberInput of ["days-before-feedback"]) {
+  for (const numberInput of ["days-before-feedback", "max-days-overdue"]) {
     if (isNaN(parseFloat(core3.getInput(numberInput)))) {
       const errorMessage = `Option "${numberInput}" did not parse to a valid float`;
       core3.setFailed(errorMessage);

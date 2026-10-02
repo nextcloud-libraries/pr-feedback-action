@@ -24,6 +24,7 @@ Every argument is optional.
 |------------------------------------------------------------| --------------------------------------------------------------------------- | --------------------- |
 | [repo-token](#repo-token)                                  | PAT for GitHub API authentication                                           | `${{ github.token }}` |
 | [days-before-feedback](#days-before-feedback)              | Idle number of days before marking issues/PRs stale                         | `60`                  |
+| [max-days-overdue](#max-days-overdue)                      | Skip PRs more than this many days past `days-before-feedback`               | `7`                   |
 | [feedback-message](#feedback-message)                      | Comment on the staled issues                                                |                       |
 | [feedback-label](#feedback-label)                          | Label to apply on staled PRs                                                | `Stale`               |
 | [exempt-labels](#exempt-labels)                            | Labels on issues exempted from stale                                        |                       |
@@ -335,6 +336,15 @@ It can be useful if your repository is processing so many issues and pull reques
 Based on the order, you could prefer to focus on the new content or on the old content of your repository.
 
 Default value: `false`
+
+#### max-days-overdue
+
+Pull requests created more than `days-before-feedback` + `max-days-overdue` days ago are skipped.
+This prevents old pull requests from being asked for feedback when they suddenly become eligible, e.g. because their author was removed from [exempt-authors](#exempt-authors).
+
+Set to `-1` to disable.
+
+Default value: `7`
 
 #### start-date
 

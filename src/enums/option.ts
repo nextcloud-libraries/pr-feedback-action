@@ -2,6 +2,7 @@ export enum Option {
   RepoToken = 'repo-token',
   FeedbackMessage = 'stale-issue-message',
   DaysBeforeFeedback = 'days-before-feedback',
+  MaxDaysOverdue = 'max-days-overdue',
   DaysBeforeClose = 'days-before-close',
   DaysBeforeIssueClose = 'days-before-issue-close',
   DaysBeforePrClose = 'days-before-pr-close',
