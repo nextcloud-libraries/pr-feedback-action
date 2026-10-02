@@ -26,14 +26,9 @@ Every argument is optional.
 | [days-before-feedback](#days-before-feedback)              | Idle number of days before marking issues/PRs stale                         | `60`                  |
 | [max-days-overdue](#max-days-overdue)                      | Skip PRs more than this many days past `days-before-feedback`               | `7`                   |
 | [feedback-message](#feedback-message)                      | Comment on the staled issues                                                |                       |
-| [feedback-label](#feedback-label)                          | Label to apply on staled PRs                                                | `Stale`               |
 | [exempt-labels](#exempt-labels)                            | Labels on issues exempted from stale                                        |                       |
-| [operations-per-run](#operations-per-run)                  | Max number of operations per run                                            | `30`                  |
-| [debug-only](#debug-only)                                  | Dry-run                                                                     | `false`               |
-| [start-date](#start-date)                                  | Skip stale action for issues/PRs created before it                          |                       |
 | [exempt-authors](#exempt-authors)                          | Milestones on issues/PRs exempted from stale                                |                       |
 | [exempt-draft-pr](#exempt-draft-pr)                        | Skip the stale action for draft PRs                                         | `false`               |
-| [enable-statistics](#enable-statistics)                    | Display statistics in the logs                                              | `true`                |
 
 ### Detailed options
 
@@ -70,7 +65,6 @@ You can fine tune which issues or pull requests should be marked as stale based 
 - [exempt-pr-labels](#exempt-pr-labels)
 - [only-labels](#only-labels)
 - [any-of-labels](#any-of-labels)
-- [start-date](#start-date)
 - [exempt-milestones](#exempt-milestones)
 - [exempt-all-milestones](#exempt-all-milestones)
 - [exempt-assignees](#exempt-assignees)
@@ -252,27 +246,6 @@ Override [any-of-labels](#any-of-labels) but only to process the pull requests t
 
 Default value: unset
 
-#### operations-per-run
-
-_Context:_  
-This action performs some API calls to GitHub to fetch or close issues and pull requests, set or update labels, add comments, delete branches, etc.  
-These operations are made in a very short period of time — because the action is very fast to run — and can be numerous based on your project action configuration and the quantity of issues and pull requests within it.  
-GitHub has a [rate limit](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting) and if reached will block these API calls for one hour (or API calls from other actions using the same user (a.k.a.: the github-token from the [repo-token](#repo-token) option)).  
-This option helps you to stay within the GitHub rate limits, as you can use this option to limit the number of operations for a single run.
-
-_Purpose:_  
-This option aims to limit the number of operations made with the GitHub API to avoid reaching the [rate limit](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting).
-
-Based on your project, your GitHub business plan and the date of the cron job you set for this action, you can increase this limit to a higher number.
-If you are not sure which is the right value for you or if the default value is good enough, you could enable the logs and look at the end of the stale action.  
-If you reached the limit, you will see a warning message in the logs, telling you that you should increase the number of operations.
-If you choose not to increase the limit, you might end up with unprocessed issues or pull requests after a stale action run.
-
-When [debugging](#Debugging), you can set it to a much higher number like `1000` since there will be fewer operations made with the GitHub API.  
-Only the [actor](#repo-token) and the batch of issues (100 per batch) will consume the operations.
-
-Default value: `30`
-
 #### remove-stale-when-updated
 
 Automatically remove the stale label when the issues or the pull requests are updated (based on [GitHub issue](https://docs.github.com/en/rest/reference/issues) field `updated_at`) or commented.
@@ -303,7 +276,7 @@ Default value: unset
 
 A comma delimited list of labels to remove when an issue or pull request becomes stale and has the [stale-issue-label](#stale-issue-label) or [stale-pr-label](#stale-pr-label) added to it.
 
-Warning: each label results in a unique API call which can drastically consume the limit of [operations-per-run](#operations-per-run).
+Warning: each label results in a unique API call which can drastically consume the operations-per-run limit (30).
 
 Default value: unset  
 Required Permission: `pull-requests: write`
@@ -312,18 +285,10 @@ Required Permission: `pull-requests: write`
 
 A comma delimited list of labels to remove when a stale issue or pull request receives activity and has the [stale-issue-label](#stale-issue-label) or [stale-pr-label](#stale-pr-label) removed from it.
 
-Warning: each label results in a unique API call which can drastically consume the limit of [operations-per-run](#operations-per-run).
+Warning: each label results in a unique API call which can drastically consume the operations-per-run limit (30).
 
 Default value: unset  
 Required Permission: `pull-requests: write`
-
-#### debug-only
-
-Run the stale workflow as dry-run.  
-No GitHub API calls that can alter your issues and pull requests will happen.  
-Useful to debug or when you want to configure the stale workflow safely.
-
-Default value: `false`
 
 #### ascending
 
@@ -332,7 +297,7 @@ Change the order used to fetch the issues and pull requests from GitHub:
 - `true` is for ascending.
 - `false` is for descending.
 
-It can be useful if your repository is processing so many issues and pull requests that you reach the [operations-per-run](#operations-per-run) limit.  
+It can be useful if your repository is processing so many issues and pull requests that you reach the operations-per-run limit (30).  
 Based on the order, you could prefer to focus on the new content or on the old content of your repository.
 
 Default value: `false`
@@ -345,15 +310,6 @@ This prevents old pull requests from being asked for feedback when they suddenly
 Set to `-1` to disable.
 
 Default value: `7`
-
-#### start-date
-
-The start date is used to ignore the issues and pull requests created before the start date.  
-Particularly useful when you wish to add this stale workflow on an existing repository and only wish to stale the new issues and pull requests.
-
-If set, the date must be formatted following the `ISO 8601` or `RFC 2822` standard.
-
-Default value: unset
 
 #### delete-branch
 
@@ -451,13 +407,6 @@ If set to `true`, the pull requests currently in draft will not be marked as sta
 
 Default value: `false`  
 Required Permission: `pull-requests: read`
-
-#### enable-statistics
-
-Collects and display statistics at the end of the stale workflow logs to get a summary of what happened during the run.  
-This option is only useful if the debug output secret `ACTIONS_STEP_DEBUG` is set to `true` in your repository to display the logs.
-
-Default value: `true`
 
 #### ignore-updates
 
@@ -596,23 +545,6 @@ jobs:
           only-labels: 'awaiting-feedback,awaiting-answers'
 ```
 
-Configure the stale action to only stale issue/PR created after the 18th april 2020:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          start-date: '2020-04-18T00:00:00Z' # ISO 8601 or RFC 2822
-```
-
 Avoid stale for specific milestones:
 
 ```yaml
@@ -707,18 +639,6 @@ jobs:
 **Logs:**  
 To see the debug output from this action, you must set the secret `ACTIONS_STEP_DEBUG` to `true` in your repository.  
 There are many logs, so this can be very helpful!
-
-**Statistics:**  
-If the logs are enabled, you can also enable the statistics log which will be visible at the end of the logs once all issues were processed.  
-This is very helpful to have a quick understanding of the whole stale workflow.  
-Set `enable-statistics` to `true` in your workflow configuration file.
-
-**Dry-run:**  
-You can run this action in debug only mode (no actions will be taken on your issues and pull requests) by passing `debug-only` to `true` as an argument to the action.
-
-**More operations:**  
-You can increase the maximum number of operations per run by passing `operations-per-run` to `1000` for example which will help you to handle more operations in a single stale workflow run.  
-If the `debug-only` option is enabled, this is very helpful because the workflow will (almost) never reach the GitHub API rate, and you will be able to deep-dive into the logs.
 
 **Job frequency:**  
 You could change the cron job frequency in the stale workflow to run the stale workflow more often.  

@@ -1,10 +1,6 @@
-import * as core from '@actions/core';
 import {context, getOctokit} from '@actions/github';
 import {GitHub} from '@actions/github/lib/utils';
 import {Option} from '../enums/option';
-import {getHumanizedDate} from '../functions/dates/get-humanized-date';
-import {isDateMoreRecentThan} from '../functions/dates/is-date-more-recent-than';
-import {isValidDate} from '../functions/dates/is-valid-date';
 import {cleanLabel} from '../functions/clean-label';
 import {IComment} from '../interfaces/comment';
 import {IIssueEvent} from '../interfaces/issue-event';
@@ -59,32 +55,17 @@ export class IssuesProcessor {
   readonly removedLabelIssues: Issue[] = [];
   readonly addedLabelIssues: Issue[] = [];
   readonly addedCloseCommentIssues: Issue[] = [];
-  readonly statistics: Statistics | undefined;
+  readonly statistics: Statistics = new Statistics();
   private readonly _logger: Logger = new Logger();
 
   constructor(options: IIssuesProcessorOptions) {
     this.options = options;
     this.client = getOctokit(this.options.repoToken, undefined, retry);
-    this.operations = new StaleOperations(this.options);
+    this.operations = new StaleOperations();
 
     this._logger.info(
       LoggerService.yellow(`Starting the feedback action process...`)
     );
-
-    if (this.options.debugOnly) {
-      this._logger.warning(
-        LoggerService.yellowBright(`Executing in debug mode!`)
-      );
-      this._logger.warning(
-        LoggerService.yellowBright(
-          `The debug output will be written but no issues/PRs will be processed.`
-        )
-      );
-    }
-
-    if (this.options.enableStatistics) {
-      this.statistics = new Statistics();
-    }
   }
 
   async processIssues(page: Readonly<number> = 1): Promise<number> {
@@ -128,15 +109,6 @@ export class IssuesProcessor {
       this._logger.warning(
         LoggerService.yellowBright(`No more operations left! Exiting...`)
       );
-      this._logger.warning(
-        `${LoggerService.yellowBright(
-          'If you think that not enough issues were processed you could try to increase the quantity related to the '
-        )} ${this._logger.createOptionLink(
-          Option.OperationsPerRun
-        )} ${LoggerService.yellowBright(
-          ' option which is currently set to '
-        )} ${LoggerService.cyan(this.options.operationsPerRun)}`
-      );
       this.statistics
         ?.setOperationsCount(this.operations.getConsumedOperationsCount())
         .logStats();
@@ -166,7 +138,6 @@ export class IssuesProcessor {
 
     // calculate string based messages for this issue
     const feedbackMessage: string = this.options.feedbackMessage;
-    const feedbackLabel: string = this.options.feedbackLabel;
     const daysBeforeFeedback: number = this._getDaysBeforeFeedback();
 
     if (issue.locked) {
@@ -184,41 +155,6 @@ export class IssuesProcessor {
     issueLogger.info(
       `Days before feedback: ${LoggerService.cyan(daysBeforeFeedback)}`
     );
-
-    if (this.options.startDate) {
-      const startDate: Date = new Date(this.options.startDate);
-      const createdAt: Date = new Date(issue.created_at);
-
-      issueLogger.info(
-        `A start date was specified for the ${getHumanizedDate(
-          startDate
-        )} (${LoggerService.cyan(this.options.startDate)})`
-      );
-
-      // Expecting that GitHub will always set a creation date on the issues and PRs
-      // But you never know!
-      if (!isValidDate(createdAt)) {
-        IssuesProcessor._endIssueProcessing(issue);
-        core.setFailed(
-          new Error(`Invalid issue field: "created_at". Expected a valid date`)
-        );
-      }
-
-      issueLogger.info(
-        `$$type created the ${getHumanizedDate(
-          createdAt
-        )} (${LoggerService.cyan(issue.created_at)})`
-      );
-
-      if (!isDateMoreRecentThan(createdAt, startDate)) {
-        issueLogger.info(
-          `Skipping this $$type because it was created before the specified start date`
-        );
-
-        IssuesProcessor._endIssueProcessing(issue);
-        return; // Don't process issues which were created before the start date
-      }
-    }
 
     // Only ask within a window after feedback is due, so PRs that become eligible
     // later (e.g. author removed from exempt-authors) don't get pinged years later
@@ -320,7 +256,7 @@ export class IssuesProcessor {
             this._getDaysBeforeFeedbackOptionName()
           )} (${LoggerService.cyan(daysBeforeFeedback)})`
         );
-        await this._askForFeedback(issue, feedbackMessage, feedbackLabel);
+        await this._askForFeedback(issue, feedbackMessage);
         issue.askedForFeedback = true; // This issue is now considered stale
         issue.markedStaleThisRun = true;
         issueLogger.info(`This $$type is now asking for feedback`);
@@ -438,8 +374,7 @@ export class IssuesProcessor {
   // Mark an issue as stale with a comment and a label
   private async _askForFeedback(
     issue: Issue,
-    feedbackMessage: string,
-    feedbackLabel: string
+    feedbackMessage: string
   ): Promise<void> {
     const issueLogger: IssueLogger = new IssueLogger(issue);
 
@@ -455,14 +390,12 @@ export class IssuesProcessor {
       this._consumeIssueOperation(issue);
       this.statistics?.incrementAddedItemsComment(issue);
 
-      if (!this.options.debugOnly) {
-        await this.client.rest.issues.createComment({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          issue_number: issue.number,
-          body: feedbackMessage
-        });
-      }
+      await this.client.rest.issues.createComment({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: issue.number,
+        body: feedbackMessage
+      });
     } catch (error) {
       issueLogger.error(`Error when creating a comment: ${error.message}`);
     }
@@ -472,14 +405,12 @@ export class IssuesProcessor {
       this.statistics?.incrementAddedItemsLabel(issue);
       this.statistics?.incrementStaleItemsCount(issue);
 
-      if (!this.options.debugOnly) {
-        await this.client.rest.issues.addLabels({
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          issue_number: issue.number,
-          labels: [feedbackLabel]
-        });
-      }
+      await this.client.rest.issues.addLabels({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: issue.number,
+        labels: [issue.feedbackLabel]
+      });
     } catch (error) {
       issueLogger.error(`Error when adding a label: ${error.message}`);
     }

@@ -1,19 +1,13 @@
-import {IIssuesProcessorOptions} from '../interfaces/issues-processor-options';
 import {Operations} from './operations';
 
+const OPERATIONS_PER_RUN = 30;
+
 export class StaleOperations extends Operations {
-  private readonly _options: IIssuesProcessorOptions;
-
-  constructor(options: Readonly<IIssuesProcessorOptions>) {
-    super();
-    this._options = options;
-  }
-
   hasRemainingOperations(): boolean {
-    return this._operationsConsumed < this._options.operationsPerRun;
+    return this._operationsConsumed < OPERATIONS_PER_RUN;
   }
 
   getRemainingOperationsCount(): number {
-    return this._options.operationsPerRun - this._operationsConsumed;
+    return OPERATIONS_PER_RUN - this._operationsConsumed;
   }
 }

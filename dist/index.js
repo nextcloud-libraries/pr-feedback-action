@@ -2899,11 +2899,11 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issue)("echo", enabled ? "on" : "off");
     }
     exports2.setCommandEcho = setCommandEcho;
-    function setFailed3(message) {
+    function setFailed2(message) {
       process.exitCode = ExitCode.Failure;
       error3(message);
     }
-    exports2.setFailed = setFailed3;
+    exports2.setFailed = setFailed2;
     function isDebug() {
       return process.env["RUNNER_DEBUG"] === "1";
     }
@@ -24535,9 +24535,6 @@ var require_dist_node = __commonJS({
 });
 
 // src/main.ts
-var core3 = __toESM(require_core());
-
-// src/classes/issues-processor.ts
 var core2 = __toESM(require_core());
 
 // node_modules/@actions/github/lib/context.js
@@ -28248,47 +28245,6 @@ function getOctokit(token, options, ...additionalPlugins) {
   return new GitHubWithPlugins(getOctokitOptions(token, options));
 }
 
-// src/functions/dates/get-humanized-date.ts
-function getHumanizedDate(date) {
-  const year = date.getFullYear();
-  let month = `${date.getMonth() + 1}`;
-  let day = `${date.getDate()}`;
-  if (month.length < 2) {
-    month = `0${month}`;
-  }
-  if (day.length < 2) {
-    day = `0${day}`;
-  }
-  return [day, month, year].join("-");
-}
-
-// src/functions/dates/is-date-more-recent-than.ts
-function isDateMoreRecentThan(date, comparedDate, equalityToleranceInSeconds = 0) {
-  if (equalityToleranceInSeconds > 0) {
-    const areDatesEqual = isDateEqualTo(
-      date,
-      comparedDate,
-      equalityToleranceInSeconds
-    );
-    return !areDatesEqual && date > comparedDate;
-  }
-  return date > comparedDate;
-}
-function isDateEqualTo(date, otherDate, toleranceInSeconds) {
-  const timestamp = date.getTime();
-  const otherTimestamp = otherDate.getTime();
-  const deltaInSeconds = Math.abs(timestamp - otherTimestamp) / 1e3;
-  return deltaInSeconds <= toleranceInSeconds;
-}
-
-// src/functions/dates/is-valid-date.ts
-function isValidDate(date) {
-  if (Object.prototype.toString.call(date) === "[object Date]") {
-    return !isNaN(date.getTime());
-  }
-  return false;
-}
-
 // src/functions/clean-label.ts
 var import_lodash = __toESM(require_lodash());
 function cleanLabel(label) {
@@ -28516,13 +28472,10 @@ var Issue = class {
     return isPullRequest(this);
   }
   get feedbackLabel() {
-    return this._getStaleLabel();
+    return "feedback-requested";
   }
   get hasAssignees() {
     return this.assignees.length > 0;
-  }
-  _getStaleLabel() {
-    return this._options.feedbackLabel;
   }
 };
 function mapLabels(labels) {
@@ -28537,17 +28490,13 @@ function mapLabels(labels) {
 }
 
 // src/classes/stale-operations.ts
+var OPERATIONS_PER_RUN = 30;
 var StaleOperations = class extends Operations {
-  _options;
-  constructor(options) {
-    super();
-    this._options = options;
-  }
   hasRemainingOperations() {
-    return this._operationsConsumed < this._options.operationsPerRun;
+    return this._operationsConsumed < OPERATIONS_PER_RUN;
   }
   getRemainingOperationsCount() {
-    return this._options.operationsPerRun - this._operationsConsumed;
+    return OPERATIONS_PER_RUN - this._operationsConsumed;
   }
 };
 
@@ -28946,28 +28895,15 @@ var IssuesProcessor = class _IssuesProcessor {
   removedLabelIssues = [];
   addedLabelIssues = [];
   addedCloseCommentIssues = [];
-  statistics;
+  statistics = new Statistics();
   _logger = new Logger();
   constructor(options) {
     this.options = options;
     this.client = getOctokit(this.options.repoToken, void 0, import_plugin_retry.retry);
-    this.operations = new StaleOperations(this.options);
+    this.operations = new StaleOperations();
     this._logger.info(
       LoggerService.yellow(`Starting the feedback action process...`)
     );
-    if (this.options.debugOnly) {
-      this._logger.warning(
-        LoggerService.yellowBright(`Executing in debug mode!`)
-      );
-      this._logger.warning(
-        LoggerService.yellowBright(
-          `The debug output will be written but no issues/PRs will be processed.`
-        )
-      );
-    }
-    if (this.options.enableStatistics) {
-      this.statistics = new Statistics();
-    }
   }
   async processIssues(page = 1) {
     const issues = await this.getIssues(page);
@@ -29001,15 +28937,6 @@ var IssuesProcessor = class _IssuesProcessor {
       this._logger.warning(
         LoggerService.yellowBright(`No more operations left! Exiting...`)
       );
-      this._logger.warning(
-        `${LoggerService.yellowBright(
-          "If you think that not enough issues were processed you could try to increase the quantity related to the "
-        )} ${this._logger.createOptionLink(
-          "operations-per-run" /* OperationsPerRun */
-        )} ${LoggerService.yellowBright(
-          " option which is currently set to "
-        )} ${LoggerService.cyan(this.options.operationsPerRun)}`
-      );
       this.statistics?.setOperationsCount(this.operations.getConsumedOperationsCount()).logStats();
       return 0;
     }
@@ -29029,7 +28956,6 @@ var IssuesProcessor = class _IssuesProcessor {
       )}`
     );
     const feedbackMessage = this.options.feedbackMessage;
-    const feedbackLabel = this.options.feedbackLabel;
     const daysBeforeFeedback = this._getDaysBeforeFeedback();
     if (issue.locked) {
       issueLogger.info(`Skipping this $$type because it is locked`);
@@ -29044,33 +28970,6 @@ var IssuesProcessor = class _IssuesProcessor {
     issueLogger.info(
       `Days before feedback: ${LoggerService.cyan(daysBeforeFeedback)}`
     );
-    if (this.options.startDate) {
-      const startDate = new Date(this.options.startDate);
-      const createdAt = new Date(issue.created_at);
-      issueLogger.info(
-        `A start date was specified for the ${getHumanizedDate(
-          startDate
-        )} (${LoggerService.cyan(this.options.startDate)})`
-      );
-      if (!isValidDate(createdAt)) {
-        _IssuesProcessor._endIssueProcessing(issue);
-        core2.setFailed(
-          new Error(`Invalid issue field: "created_at". Expected a valid date`)
-        );
-      }
-      issueLogger.info(
-        `$$type created the ${getHumanizedDate(
-          createdAt
-        )} (${LoggerService.cyan(issue.created_at)})`
-      );
-      if (!isDateMoreRecentThan(createdAt, startDate)) {
-        issueLogger.info(
-          `Skipping this $$type because it was created before the specified start date`
-        );
-        _IssuesProcessor._endIssueProcessing(issue);
-        return;
-      }
-    }
     if (this.options.maxDaysOverdue >= 0 && !_IssuesProcessor._updatedSince(
       issue.created_at,
       daysBeforeFeedback + this.options.maxDaysOverdue
@@ -29145,7 +29044,7 @@ var IssuesProcessor = class _IssuesProcessor {
             this._getDaysBeforeFeedbackOptionName()
           )} (${LoggerService.cyan(daysBeforeFeedback)})`
         );
-        await this._askForFeedback(issue, feedbackMessage, feedbackLabel);
+        await this._askForFeedback(issue, feedbackMessage);
         issue.askedForFeedback = true;
         issue.markedStaleThisRun = true;
         issueLogger.info(`This $$type is now asking for feedback`);
@@ -29235,7 +29134,7 @@ var IssuesProcessor = class _IssuesProcessor {
     }
   }
   // Mark an issue as stale with a comment and a label
-  async _askForFeedback(issue, feedbackMessage, feedbackLabel) {
+  async _askForFeedback(issue, feedbackMessage) {
     const issueLogger = new IssueLogger(issue);
     issueLogger.info(`Marking this $$type for feedback`);
     this.staleIssues.push(issue);
@@ -29244,14 +29143,12 @@ var IssuesProcessor = class _IssuesProcessor {
     try {
       this._consumeIssueOperation(issue);
       this.statistics?.incrementAddedItemsComment(issue);
-      if (!this.options.debugOnly) {
-        await this.client.rest.issues.createComment({
-          owner: context2.repo.owner,
-          repo: context2.repo.repo,
-          issue_number: issue.number,
-          body: feedbackMessage
-        });
-      }
+      await this.client.rest.issues.createComment({
+        owner: context2.repo.owner,
+        repo: context2.repo.repo,
+        issue_number: issue.number,
+        body: feedbackMessage
+      });
     } catch (error3) {
       issueLogger.error(`Error when creating a comment: ${error3.message}`);
     }
@@ -29259,14 +29156,12 @@ var IssuesProcessor = class _IssuesProcessor {
       this._consumeIssueOperation(issue);
       this.statistics?.incrementAddedItemsLabel(issue);
       this.statistics?.incrementStaleItemsCount(issue);
-      if (!this.options.debugOnly) {
-        await this.client.rest.issues.addLabels({
-          owner: context2.repo.owner,
-          repo: context2.repo.repo,
-          issue_number: issue.number,
-          labels: [feedbackLabel]
-        });
-      }
+      await this.client.rest.issues.addLabels({
+        owner: context2.repo.owner,
+        repo: context2.repo.repo,
+        issue_number: issue.number,
+        labels: [issue.feedbackLabel]
+      });
     } catch (error3) {
       issueLogger.error(`Error when adding a label: ${error3.message}`);
     }
@@ -29290,46 +29185,30 @@ async function _run() {
     const issueProcessor = new IssuesProcessor(args);
     await issueProcessor.processIssues();
   } catch (error3) {
-    core3.error(error3);
-    core3.setFailed(error3.message);
+    core2.error(error3);
+    core2.setFailed(error3.message);
   }
 }
 function _getAndValidateArgs() {
   const args = {
-    repoToken: core3.getInput("repo-token"),
-    feedbackMessage: core3.getInput("feedback-message"),
+    repoToken: core2.getInput("repo-token"),
+    feedbackMessage: core2.getInput("feedback-message"),
     daysBeforeFeedback: parseFloat(
-      core3.getInput("days-before-feedback", { required: true })
+      core2.getInput("days-before-feedback", { required: true })
     ),
     maxDaysOverdue: parseFloat(
-      core3.getInput("max-days-overdue", { required: true })
+      core2.getInput("max-days-overdue", { required: true })
     ),
-    feedbackLabel: core3.getInput("feedback-label", { required: true }),
-    operationsPerRun: parseInt(
-      core3.getInput("operations-per-run", { required: true })
-    ),
-    debugOnly: core3.getInput("debug-only") === "true",
-    enableStatistics: core3.getInput("enable-statistics") === "true",
-    startDate: core3.getInput("start-date") !== "" ? core3.getInput("start-date") : "2023-05-01",
-    exemptDraftPr: core3.getInput("exempt-draft-pr") === "true",
-    exemptLabels: core3.getInput("exempt-labels"),
-    exemptAuthors: core3.getInput("exempt-authors"),
-    exemptBots: core3.getInput("exempt-bots") === "true"
+    exemptDraftPr: core2.getInput("exempt-draft-pr") === "true",
+    exemptLabels: core2.getInput("exempt-labels"),
+    exemptAuthors: core2.getInput("exempt-authors"),
+    exemptBots: core2.getInput("exempt-bots") === "true"
   };
   for (const numberInput of ["days-before-feedback", "max-days-overdue"]) {
-    if (isNaN(parseFloat(core3.getInput(numberInput)))) {
+    if (isNaN(parseFloat(core2.getInput(numberInput)))) {
       const errorMessage = `Option "${numberInput}" did not parse to a valid float`;
-      core3.setFailed(errorMessage);
+      core2.setFailed(errorMessage);
       throw new Error(errorMessage);
-    }
-  }
-  for (const optionalDateInput of ["start-date"]) {
-    if (core3.getInput(optionalDateInput) !== "") {
-      if (!isValidDate(new Date(core3.getInput(optionalDateInput)))) {
-        const errorMessage = `Option "${optionalDateInput}" did not parse to a valid date`;
-        core3.setFailed(errorMessage);
-        throw new Error(errorMessage);
-      }
     }
   }
   return args;

@@ -17,29 +17,9 @@ inputs:
     description: 'Skip pull requests created more than this many days after `days-before-feedback` was reached, so they are not pinged long after the fact (e.g. when their author is removed from `exempt-authors`). Set to -1 to disable.'
     required: false
     default: '7'
-  feedback-label:
-    description: 'The label to apply when an issue has been commented on.'
-    required: false
-    default: 'feedback-requested'
-  debug-only:
-    description: 'Run the processor in debug mode without actually performing any operations on live issues.'
-    default: 'false'
-    required: false
-  operations-per-run:
-    description: 'The maximum number of operations per run, used to control rate limiting (GitHub API CRUD related).'
-    default: '30'
-    required: false
-  start-date:
-    description: 'The date used to skip the stale action on issue/pull request created before it (ISO 8601 or RFC 2822).'
-    default: ''
-    required: false
   exempt-draft-pr:
     description: 'Exempt draft pull requests from being marked as stale. Default to false.'
     default: 'false'
-    required: false
-  enable-statistics:
-    description: 'Display some statistics at the end regarding the stale workflow (only when the logs are enabled).'
-    default: 'true'
     required: false
   exempt-labels:
     description: 'The labels that mean a pr is exempt from asking for feedback. Separate multiple labels with commas (eg. "label1,label2").'

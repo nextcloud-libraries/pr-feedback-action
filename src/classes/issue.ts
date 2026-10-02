@@ -57,15 +57,11 @@ export class Issue implements IIssue {
   }
 
   get feedbackLabel(): string {
-    return this._getStaleLabel();
+    return 'feedback-requested';
   }
 
   get hasAssignees(): boolean {
     return this.assignees.length > 0;
-  }
-
-  private _getStaleLabel(): string {
-    return this._options.feedbackLabel;
   }
 }
 
