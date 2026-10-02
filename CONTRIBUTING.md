@@ -9,7 +9,7 @@ $ npm install
 Build the typescript and package it for distribution.
 
 ```bash
-$ npm run build && npm run pack
+$ npm run build
 ```
 
 Run the tests :heavy_check_mark:
@@ -49,26 +49,12 @@ $ npm run all
 IMPORTANT:
 Be sure to commit the result of:
 ```bash
-$ npm run pack
+$ npm run build
 ```
 Otherwise PR checks will fail. 
 
 # Release
 
-Based on [standard-version](https://github.com/conventional-changelog/standard-version).
-
-## Define the new version
-
-You can run `npm run release:dry-run` to create a dry-run, or you can directly run `npm run release` to create a new local release.  
-It will run `prerelease` beforehand to build and pack everything.
-
-If the `prerelease` succeeded, a bump of version will happen based on the unreleased commits.  
-It will:
-
-- Update the _package.json_ version field
-- Update the _package-lock.json_ version field
-- Update the _CHANGELOG.md_ to include the release notes of the new version
-- Create a local tag
-- Create a commit
-
-If everything generated seems ok for you, you can push your tag by running `git push --follow-tags origin {your-branch-name}`.
+1. Bump the `version` in _package.json_ and _package-lock.json_ (`npm version <version> --no-git-tag-version`) and get it merged.
+2. Create a [GitHub release](https://github.com/nextcloud-libraries/pr-feedback-action/releases/new) with a `v<version>` tag, e.g. `v2.0.0`.
+3. The [release workflow](.github/workflows/release-new-action-version.yml) then moves the major tag (e.g. `v2`) to the new release.
