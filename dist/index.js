@@ -29494,7 +29494,9 @@ var IssuesProcessor = class _IssuesProcessor {
         (issue) => new Issue(this.options, issue)
       );
     } catch (error3) {
-      throw Error(`Getting issues was blocked by the error: ${error3.message}`);
+      throw Error(`Getting issues was blocked by the error: ${error3.message}`, {
+        cause: error3
+      });
     }
   }
   // returns the creation date of a given label on an issue (or nothing if no label existed)
