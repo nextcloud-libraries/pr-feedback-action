@@ -490,216 +490,30 @@ Default value: `false`
 
 See also [action.yml](./action.yml) for a comprehensive list of all the options.
 
+Nextcloud repositories use the organization workflow template, see [pr-feedback.yml](https://github.com/nextcloud/.github/blob/master/workflow-templates/pr-feedback.yml).
+
 Basic:
 
 ```yaml
-name: 'Close stale issues and PRs'
+name: 'Ask for feedback on PRs'
 on:
   schedule:
     - cron: '30 1 * * *'
 
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          stale-issue-message: 'Message to comment on stale issues. If none provided, will not mark issues stale'
-          stale-pr-message: 'Message to comment on stale PRs. If none provided, will not mark PRs stale'
-```
-
-Configure stale timeouts:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
-  stale:
+  pr-feedback:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v8
+      - uses: nextcloud-libraries/pr-feedback-action@v2
         with:
-          stale-issue-message: 'This issue is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days.'
-          days-before-stale: 30
-          days-before-close: 5
-```
-
-Configure different stale timeouts but never close a PR:
-
-```yaml
-name: 'Close stale issues and PR'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          stale-issue-message: 'This issue is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days.'
-          stale-pr-message: 'This PR is stale because it has been open 45 days with no activity. Remove stale label or comment or this will be closed in 10 days.'
-          close-issue-message: 'This issue was closed because it has been stalled for 5 days with no activity.'
-          days-before-stale: 30
-          days-before-close: 5
-          days-before-pr-close: -1
-```
-
-Configure different stale timeouts:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          stale-issue-message: 'This issue is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days.'
-          stale-pr-message: 'This PR is stale because it has been open 45 days with no activity. Remove stale label or comment or this will be closed in 10 days.'
-          close-issue-message: 'This issue was closed because it has been stalled for 5 days with no activity.'
-          close-pr-message: 'This PR was closed because it has been stalled for 10 days with no activity.'
-          days-before-issue-stale: 30
-          days-before-pr-stale: 45
-          days-before-issue-close: 5
-          days-before-pr-close: 10
-```
-
-Configure labels:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          stale-issue-message: 'Stale issue message'
-          stale-pr-message: 'Stale pull request message'
-          stale-issue-label: 'no-issue-activity'
-          exempt-issue-labels: 'awaiting-approval,work-in-progress'
-          stale-pr-label: 'no-pr-activity'
-          exempt-pr-labels: 'awaiting-approval,work-in-progress'
-          only-labels: 'awaiting-feedback,awaiting-answers'
-```
-
-Configure the stale action to only stale issue/PR created after the 18th april 2020:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          start-date: '2020-04-18T00:00:00Z' # ISO 8601 or RFC 2822
-```
-
-Avoid stale for specific milestones:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          exempt-issue-milestones: 'future,alpha,beta'
-          exempt-pr-milestones: 'bugfix,improvement'
-```
-
-Avoid stale for all PR with milestones:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          exempt-all-pr-milestones: true
-```
-
-Check stale for specific labels:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          any-of-labels: 'needs-more-info,needs-demo'
-          # You can opt for 'only-labels' instead if your use-case requires all labels
-          # to be present in the issue/PR
-```
-
-Avoid stale for specific assignees:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          exempt-issue-assignees: 'marco,polo'
-          exempt-pr-assignees: 'marco'
-```
-
-Avoid stale for all PR with assignees:
-
-```yaml
-name: 'Close stale issues and PRs'
-on:
-  schedule:
-    - cron: '30 1 * * *'
-
-jobs:
-  stale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@v8
-        with:
-          exempt-all-pr-assignees: true
+          feedback-message: 'Thank you for your pull request! How was the review process for you?'
+          days-before-feedback: 14
+          exempt-authors: 'user1,user2'
+          exempt-bots: true
 ```
 
 ### Debugging
