@@ -22,6 +22,9 @@ function _getAndValidateArgs(): IIssuesProcessorOptions {
     daysBeforeFeedback: parseFloat(
       core.getInput('days-before-feedback', {required: true})
     ),
+    maxDaysOverdue: parseFloat(
+      core.getInput('max-days-overdue', {required: true})
+    ),
     feedbackLabel: core.getInput('feedback-label', {required: true}),
     operationsPerRun: parseInt(
       core.getInput('operations-per-run', {required: true})
@@ -38,7 +41,7 @@ function _getAndValidateArgs(): IIssuesProcessorOptions {
     exemptBots: core.getInput('exempt-bots') === 'true'
   };
 
-  for (const numberInput of ['days-before-feedback']) {
+  for (const numberInput of ['days-before-feedback', 'max-days-overdue']) {
     if (isNaN(parseFloat(core.getInput(numberInput)))) {
       const errorMessage = `Option "${numberInput}" did not parse to a valid float`;
       core.setFailed(errorMessage);

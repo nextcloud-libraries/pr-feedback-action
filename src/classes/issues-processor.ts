@@ -220,6 +220,24 @@ export class IssuesProcessor {
       }
     }
 
+    // Only ask within a window after feedback is due, so PRs that become eligible
+    // later (e.g. author removed from exempt-authors) don't get pinged years later
+    if (
+      this.options.maxDaysOverdue >= 0 &&
+      !IssuesProcessor._updatedSince(
+        issue.created_at,
+        daysBeforeFeedback + this.options.maxDaysOverdue
+      )
+    ) {
+      issueLogger.info(
+        `Skipping this $$type because it is more than ${LoggerService.cyan(
+          this.options.maxDaysOverdue
+        )} days past ${issueLogger.createOptionLink(Option.DaysBeforeFeedback)}`
+      );
+      IssuesProcessor._endIssueProcessing(issue);
+      return;
+    }
+
     if (issue.askedForFeedback) {
       issueLogger.info(`This $$type includes a feedback label`);
     } else {
@@ -291,10 +309,10 @@ export class IssuesProcessor {
       issueLogger.info(`This $$type is not marked as feedback`);
 
       // Should this issue be marked as stale?
-      const shouldAskForFeedback = !IssuesProcessor._updatedSince(
-        issue.created_at,
-        daysBeforeFeedback
-      );
+      // -1 disables asking for feedback
+      const shouldAskForFeedback =
+        daysBeforeFeedback >= 0 &&
+        !IssuesProcessor._updatedSince(issue.created_at, daysBeforeFeedback);
 
       if (shouldAskForFeedback) {
         issueLogger.info(
