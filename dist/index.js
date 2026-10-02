@@ -29305,6 +29305,15 @@ var IssuesProcessor = class _IssuesProcessor {
       if (!this.operations.hasRemainingOperations()) {
         break;
       }
+      if (this._isCreatedBeforeCutoff(issue)) {
+        this._logger.info(
+          LoggerService.green(
+            `Reached #${issue.number} which was created before the cutoff. Exiting...`
+          )
+        );
+        this.statistics?.setOperationsCount(this.operations.getConsumedOperationsCount()).logStats();
+        return this.operations.getRemainingOperationsCount();
+      }
       const issueLogger = new IssueLogger(issue);
       await issueLogger.grouping(`$$type #${issue.number}`, async () => {
         await this.processIssue(issue);
@@ -29383,18 +29392,6 @@ var IssuesProcessor = class _IssuesProcessor {
         _IssuesProcessor._endIssueProcessing(issue);
         return;
       }
-    }
-    if (this.options.maxDaysOverdue >= 0 && !_IssuesProcessor._updatedSince(
-      issue.created_at,
-      daysBeforeFeedback + this.options.maxDaysOverdue
-    )) {
-      issueLogger.info(
-        `Skipping this $$type because it is more than ${LoggerService.cyan(
-          this.options.maxDaysOverdue
-        )} days past ${issueLogger.createOptionLink("days-before-feedback" /* DaysBeforeFeedback */)}`
-      );
-      _IssuesProcessor._endIssueProcessing(issue);
-      return;
     }
     if (issue.askedForFeedback) {
       issueLogger.info(`This $$type includes a feedback label`);
@@ -29494,6 +29491,7 @@ var IssuesProcessor = class _IssuesProcessor {
         owner: context2.repo.owner,
         repo: context2.repo.repo,
         per_page: 1e3,
+        sort: "created",
         direction: "desc",
         state: "all",
         page
@@ -29582,6 +29580,20 @@ var IssuesProcessor = class _IssuesProcessor {
     } catch (error3) {
       issueLogger.error(`Error when adding a label: ${error3.message}`);
     }
+  }
+  // Only ask within a window after feedback is due, so PRs that become eligible
+  // later (e.g. author removed from exempt-authors) don't get pinged years later
+  _isCreatedBeforeCutoff(issue) {
+    if (this.options.startDate && !isDateMoreRecentThan(
+      new Date(issue.created_at),
+      new Date(this.options.startDate)
+    )) {
+      return true;
+    }
+    return this.options.daysBeforeFeedback >= 0 && this.options.maxDaysOverdue >= 0 && !_IssuesProcessor._updatedSince(
+      issue.created_at,
+      this.options.daysBeforeFeedback + this.options.maxDaysOverdue
+    );
   }
   _getDaysBeforeFeedback() {
     return this.options.daysBeforeFeedback;
