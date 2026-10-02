@@ -12,3 +12,6 @@ jobs:
   call-update-configuration-files:
     name: Update configuration files
     uses: actions/reusable-workflows/.github/workflows/update-config-files.yml@09976383aa8780d306ee271bd21bb77a54fad474 # main
+    with:
+      # ESLint uses a local flat config (eslint.config.js); the upstream .eslintrc.js is not supported by ESLint 10
+      reference-files: '.prettierrc.js'

@@ -358,7 +358,9 @@ export class IssuesProcessor {
         (issue: Readonly<OctokitIssue>): Issue => new Issue(this.options, issue)
       );
     } catch (error) {
-      throw Error(`Getting issues was blocked by the error: ${error.message}`);
+      throw Error(`Getting issues was blocked by the error: ${error.message}`, {
+        cause: error
+      });
     }
   }
 
